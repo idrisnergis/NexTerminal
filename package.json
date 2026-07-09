@@ -1,0 +1,52 @@
+{
+  "name": "nexterm",
+  "version": "1.0.0",
+  "description": "Modern SSH Terminal Manager",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
+    "dev:renderer": "vite --config vite.config.ts",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build --config vite.config.ts --outDir ../../dist/renderer --emptyOutDir",
+    "start": "npm run build:main && electron dist/main/main.js",
+    "start:dev": "set NODE_ENV=development&& npm run build:main && electron dist/main/main.js",
+    "package": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "ssh2": "^1.15.0",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0",
+    "xterm-addon-search": "^0.13.0",
+    "xterm-addon-web-links": "^0.9.0",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/ssh2": "^1.11.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.4",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.33",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "lucide-react": "^0.314.0"
+  },
+  "build": {
+    "appId": "com.nexterm.app",
+    "productName": "NexTerm",
+    "files": [
+      "dist/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    }
+  }
+}
