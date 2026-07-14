@@ -4,6 +4,7 @@ import { TerminalTab } from '../types/electron';
 import TerminalView from './TerminalView';
 import FileBrowser from './FileBrowser';
 import ResizeHandle from './ResizeHandle';
+import ServerStatusBar from './ServerStatusBar';
 
 interface TerminalPanelProps {
   tabs: TerminalTab[];
@@ -143,35 +144,50 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
         {/* Terminal Views */}
         {!isHomeActive && tabs.length > 0 && (
           <>
-            <div className="flex-1 relative">
-              {tabs.map((tab) => (
-                <div
-                  key={tab.id}
-                  className={`absolute inset-0 ${tab.id === activeTabId && !showHome ? '' : 'hidden'}`}
-                >
-                  <TerminalView
-                    sessionId={tab.sessionId}
-                    isActive={tab.id === activeTabId && !showHome}
-                    onReconnect={() => onReconnect?.(tab)}
-                    onCloseTab={() => onTabClose(tab.id)}
-                  />
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex overflow-hidden">
+                {/* Terminal */}
+                <div className="flex-1 relative">
+                  {tabs.map((tab) => (
+                    <div
+                      key={tab.id}
+                      className={`absolute inset-0 ${tab.id === activeTabId && !showHome ? '' : 'hidden'}`}
+                    >
+                      <TerminalView
+                        sessionId={tab.sessionId}
+                        isActive={tab.id === activeTabId && !showHome}
+                        onReconnect={() => onReconnect?.(tab)}
+                        onCloseTab={() => onTabClose(tab.id)}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* File Browser */}
-            {activeTabId && (fileBrowserVisible[activeTabId] ?? false) && (
-              <>
-                <ResizeHandle direction="horizontal" onResize={handleFileBrowserResize} />
-                <div style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth }}>
-                  <FileBrowser
-                    sessionId={activeTabId}
-                    isVisible={true}
-                    onToggle={() => toggleFileBrowser(activeTabId)}
-                  />
-                </div>
-              </>
-            )}
+                {/* File Browser */}
+                {activeTabId && (fileBrowserVisible[activeTabId] ?? false) && (
+                  <>
+                    <ResizeHandle direction="horizontal" onResize={handleFileBrowserResize} />
+                    <div style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth }}>
+                      <FileBrowser
+                        sessionId={activeTabId}
+                        isVisible={true}
+                        onToggle={() => toggleFileBrowser(activeTabId)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Server Status Bar */}
+              {activeTabId && tabs.find(t => t.id === activeTabId) && (
+                <ServerStatusBar
+                  sessionId={activeTabId}
+                  isConnected={tabs.find(t => t.id === activeTabId)?.isConnected ?? false}
+                  connectionName={tabs.find(t => t.id === activeTabId)?.connectionName ?? ''}
+                  host={tabs.find(t => t.id === activeTabId)?.host ?? ''}
+                />
+              )}
+            </div>
           </>
         )}
       </div>

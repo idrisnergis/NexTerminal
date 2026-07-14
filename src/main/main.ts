@@ -140,6 +140,15 @@ ipcMain.handle('ssh:resize', async (_event, sessionId: string, cols: number, row
   return { success: true };
 });
 
+ipcMain.handle('ssh:exec', async (_event, sessionId: string, command: string) => {
+  try {
+    const output = await sshManager.exec(sessionId, command);
+    return { success: true, output };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
 // SSH data event forwarding
 sshManager.on('data', (sessionId: string, data: string) => {
   mainWindow?.webContents.send('ssh:data', sessionId, data);

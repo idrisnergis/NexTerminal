@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sshDisconnect: (sessionId: string) => ipcRenderer.invoke('ssh:disconnect', sessionId),
   sshWrite: (sessionId: string, data: string) => ipcRenderer.invoke('ssh:write', sessionId, data),
   sshResize: (sessionId: string, cols: number, rows: number) => ipcRenderer.invoke('ssh:resize', sessionId, cols, rows),
+  sshExec: (sessionId: string, command: string) => ipcRenderer.invoke('ssh:exec', sessionId, command),
   onSSHData: (callback: (sessionId: string, data: string) => void) => {
     ipcRenderer.on('ssh:data', (_event, sessionId, data) => callback(sessionId, data));
   },

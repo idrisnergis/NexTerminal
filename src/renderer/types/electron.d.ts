@@ -9,6 +9,7 @@ export interface ElectronAPI {
   sshDisconnect: (sessionId: string) => Promise<{ success: boolean }>;
   sshWrite: (sessionId: string, data: string) => Promise<{ success: boolean }>;
   sshResize: (sessionId: string, cols: number, rows: number) => Promise<{ success: boolean }>;
+  sshExec: (sessionId: string, command: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   onSSHData: (callback: (sessionId: string, data: string) => void) => void;
   onSSHClosed: (callback: (sessionId: string) => void) => void;
   onSSHError: (callback: (sessionId: string, error: string) => void) => void;

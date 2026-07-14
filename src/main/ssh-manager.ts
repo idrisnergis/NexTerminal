@@ -151,6 +151,33 @@ export class SSHManager extends EventEmitter {
     }
     return session.client;
   }
+
+  /**
+   * Execute a command in background (separate channel, doesn't touch the terminal)
+   */
+  async exec(sessionId: string, command: string): Promise<string> {
+    const session = this.sessions.get(sessionId);
+    if (!session) throw new Error('Session not found');
+
+    return new Promise((resolve, reject) => {
+      session.client.exec(command, (err, stream) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        let output = '';
+        stream.on('data', (data: Buffer) => {
+          output += data.toString('utf-8');
+        });
+        stream.stderr.on('data', (data: Buffer) => {
+          output += data.toString('utf-8');
+        });
+        stream.on('close', () => {
+          resolve(output.trim());
+        });
+      });
+    });
+  }
 }
 
 function generateId(): string {
