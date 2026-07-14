@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { X, Terminal as TerminalIcon, FolderOpen, Home, Search, MonitorDot } from 'lucide-react';
+import { X, FolderOpen, Home } from 'lucide-react';
 import { TerminalTab } from '../types/electron';
 import TerminalView from './TerminalView';
 import FileBrowser from './FileBrowser';
 import ResizeHandle from './ResizeHandle';
 import ServerStatusBar from './ServerStatusBar';
+import HomeScreen from './HomeScreen';
 
 interface TerminalPanelProps {
   tabs: TerminalTab[];
@@ -20,7 +21,6 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
   const [fileBrowserVisible, setFileBrowserVisible] = useState<Record<string, boolean>>({});
   const [fileBrowserWidth, setFileBrowserWidth] = useState(280);
   const [showHome, setShowHome] = useState(true);
-  const [quickSearch, setQuickSearch] = useState('');
 
   // When a new tab becomes active from outside (new connection), switch away from home
   useEffect(() => {
@@ -105,40 +105,10 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
       <div className="flex-1 flex relative overflow-hidden">
         {/* Home Screen */}
         {(isHomeActive || tabs.length === 0) && (
-          <div className="flex-1 flex flex-col items-center justify-center text-terminal-fg/30">
-            <TerminalIcon size={48} className="mb-3 text-accent/40" />
-            <h2 className="text-lg font-semibold mb-1 text-terminal-fg/60">NexTerm</h2>
-            <p className="text-xs mb-6 text-terminal-fg/30">SSH Connection Manager</p>
-
-            {/* Action buttons */}
-            <div className="flex gap-3 mb-6">
-              <button
-                onClick={onStartLocalTerminal}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
-              >
-                <MonitorDot size={14} className="text-success" />
-                <span className="text-xs text-terminal-fg/70">Start local terminal</span>
-              </button>
-            </div>
-
-            {/* Quick search */}
-            <div className="w-72 relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-terminal-fg/30" />
-              <input
-                type="text"
-                className="input-field pl-9 text-sm"
-                placeholder="Find session or server name..."
-                value={quickSearch}
-                onChange={(e) => setQuickSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && quickSearch.trim()) {
-                    onQuickConnect?.(quickSearch.trim());
-                    setQuickSearch('');
-                  }
-                }}
-              />
-            </div>
-          </div>
+          <HomeScreen
+            onStartLocalTerminal={onStartLocalTerminal}
+            onConnect={onQuickConnect}
+          />
         )}
 
         {/* Terminal Views */}

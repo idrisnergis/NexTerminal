@@ -18,12 +18,13 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 1000,
-    minHeight: 600,
+    minWidth: 800,
+    minHeight: 500,
     title: 'NexTerm',
     icon: path.join(__dirname, '../renderer/assets/icon.png'),
     frame: false,
     resizable: true,
+    thickFrame: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

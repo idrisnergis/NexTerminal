@@ -157,6 +157,31 @@ function App() {
     }
   }, []);
 
+  const handleQuickSearch = useCallback(async (searchTerm: string) => {
+    // Search through saved connections and connect to first match
+    const connections = await window.electronAPI.getConnections();
+    const match = connections.find(
+      (c) =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.host.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    if (match) {
+      handleConnect(match);
+    } else {
+      // If looks like IP/hostname, create a quick connection
+      if (searchTerm.match(/^[\d.]+$/) || searchTerm.includes('.')) {
+        handleConnect({
+          id: Date.now().toString(36),
+          name: searchTerm,
+          host: searchTerm,
+          port: 22,
+          username: '',
+          authType: 'password',
+        });
+      }
+    }
+  }, [handleConnect]);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-terminal-bg select-none">
       <TitleBar onOpenSettings={() => setShowSettings(true)} />
@@ -199,6 +224,7 @@ function App() {
               handleCloseTab(tab.id);
             }}
             onStartLocalTerminal={handleStartLocalTerminal}
+            onQuickConnect={handleQuickSearch}
           />
         </main>
       </div>
