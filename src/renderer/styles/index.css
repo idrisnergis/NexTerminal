@@ -44,6 +44,38 @@
   }
 }
 
+@layer utilities {
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes draw {
+    from { stroke-dashoffset: 40; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  .animate-draw {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: draw 1s ease-out 0.4s forwards;
+  }
+
+  .animate-blink {
+    animation: blink 1.2s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+}
+
 @layer components {
   .titlebar-button {
     @apply w-12 h-8 flex items-center justify-center transition-colors duration-150;

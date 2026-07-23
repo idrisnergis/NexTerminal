@@ -23,9 +23,20 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
   const [showHome, setShowHome] = useState(true);
 
   // When a new tab becomes active from outside (new connection), switch away from home
+  // and auto-open file browser for remote connections
   useEffect(() => {
     if (activeTabId && tabs.find(t => t.id === activeTabId)) {
       setShowHome(false);
+
+      const tab = tabs.find(t => t.id === activeTabId);
+      if (tab && tab.isConnected && tab.connectionName !== 'Local Terminal') {
+        setFileBrowserVisible((prev) => {
+          if (prev[activeTabId] === undefined) {
+            return { ...prev, [activeTabId]: true };
+          }
+          return prev;
+        });
+      }
     }
   }, [activeTabId, tabs]);
 
@@ -40,8 +51,17 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
     setFileBrowserWidth((w) => Math.max(180, Math.min(500, w - delta)));
   }, []);
 
-  // Show home when no tabs or home is explicitly selected
   const isHomeActive = showHome || !activeTabId;
+  const activeTab = activeTabId ? tabs.find(t => t.id === activeTabId) : null;
+
+  // Determine if file browser should show for the current active tab
+  const showFileBrowserForActive = !!(
+    activeTabId &&
+    !isHomeActive &&
+    activeTab &&
+    activeTab.connectionName !== 'Local Terminal' &&
+    (fileBrowserVisible[activeTabId] ?? false)
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -87,7 +107,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
 
         {/* File Browser Toggle */}
         <div className="ml-auto flex items-center pr-2">
-          {activeTabId && !showHome && (
+          {activeTabId && !isHomeActive && activeTab && activeTab.connectionName !== 'Local Terminal' && (
             <button
               onClick={() => toggleFileBrowser(activeTabId)}
               className={`p-1.5 rounded transition-colors ${
@@ -101,64 +121,68 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 flex relative overflow-hidden">
+      {/* Content Area — all views stay mounted, visibility controlled via CSS */}
+      <div className="flex-1 relative overflow-hidden">
         {/* Home Screen */}
-        {(isHomeActive || tabs.length === 0) && (
+        <div className={`absolute inset-0 z-20 ${isHomeActive || tabs.length === 0 ? '' : 'pointer-events-none hidden'}`}>
           <HomeScreen
             onStartLocalTerminal={onStartLocalTerminal}
             onConnect={onQuickConnect}
           />
-        )}
+        </div>
 
-        {/* Terminal Views */}
-        {!isHomeActive && tabs.length > 0 && (
-          <>
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 flex overflow-hidden">
-                {/* Terminal */}
-                <div className="flex-1 relative">
-                  {tabs.map((tab) => (
-                    <div
-                      key={tab.id}
-                      className={`absolute inset-0 ${tab.id === activeTabId && !showHome ? '' : 'hidden'}`}
-                    >
-                      <TerminalView
-                        sessionId={tab.sessionId}
-                        isActive={tab.id === activeTabId && !showHome}
-                        onReconnect={() => onReconnect?.(tab)}
-                        onCloseTab={() => onTabClose(tab.id)}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* File Browser */}
-                {activeTabId && (fileBrowserVisible[activeTabId] ?? false) && (
-                  <>
-                    <ResizeHandle direction="horizontal" onResize={handleFileBrowserResize} />
-                    <div style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth }}>
-                      <FileBrowser
-                        sessionId={activeTabId}
-                        isVisible={true}
-                        onToggle={() => toggleFileBrowser(activeTabId)}
-                      />
-                    </div>
-                  </>
-                )}
+        {/* Terminal + File Browser area — always rendered once tabs exist */}
+        {tabs.length > 0 && (
+          <div className={`absolute inset-0 flex flex-col ${isHomeActive ? 'invisible pointer-events-none' : ''}`}>
+            <div className="flex-1 flex overflow-hidden">
+              {/* Terminals — all stay mounted, only active one visible */}
+              <div className="flex-1 relative">
+                {tabs.map((tab) => (
+                  <div
+                    key={tab.id}
+                    className={`absolute inset-0 ${tab.id === activeTabId && !isHomeActive ? '' : 'hidden'}`}
+                  >
+                    <TerminalView
+                      sessionId={tab.sessionId}
+                      isActive={tab.id === activeTabId && !isHomeActive}
+                      onReconnect={() => onReconnect?.(tab)}
+                      onCloseTab={() => onTabClose(tab.id)}
+                    />
+                  </div>
+                ))}
               </div>
 
-              {/* Server Status Bar */}
-              {activeTabId && tabs.find(t => t.id === activeTabId) && (
-                <ServerStatusBar
-                  sessionId={activeTabId}
-                  isConnected={tabs.find(t => t.id === activeTabId)?.isConnected ?? false}
-                  connectionName={tabs.find(t => t.id === activeTabId)?.connectionName ?? ''}
-                  host={tabs.find(t => t.id === activeTabId)?.host ?? ''}
-                />
+              {/* File Browsers — each tab keeps its own instance alive */}
+              {showFileBrowserForActive && activeTabId && (
+                <ResizeHandle direction="horizontal" onResize={handleFileBrowserResize} />
               )}
+              {tabs
+                .filter(t => t.connectionName !== 'Local Terminal' && fileBrowserVisible[t.id])
+                .map((tab) => (
+                  <div
+                    key={`fb-${tab.id}`}
+                    className={tab.id === activeTabId && !isHomeActive ? '' : 'hidden'}
+                    style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth }}
+                  >
+                    <FileBrowser
+                      sessionId={tab.sessionId}
+                      isVisible={tab.id === activeTabId && !isHomeActive}
+                      onToggle={() => toggleFileBrowser(tab.id)}
+                    />
+                  </div>
+                ))}
             </div>
-          </>
+
+            {/* Server Status Bar */}
+            {activeTab && !isHomeActive && (
+              <ServerStatusBar
+                sessionId={activeTab.sessionId}
+                isConnected={activeTab.isConnected}
+                connectionName={activeTab.connectionName}
+                host={activeTab.host}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

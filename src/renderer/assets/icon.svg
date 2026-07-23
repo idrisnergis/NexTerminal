@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#1a1b26"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg-gradient)" opacity="0.6"/>
+  
+  <!-- Terminal prompt chevron -->
+  <path d="M120 340L220 256L120 172" stroke="#7aa2f7" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Cursor/underscore -->
+  <path d="M250 340H380" stroke="#9ece6a" stroke-width="32" stroke-linecap="round"/>
+  
+  <!-- Network indicator dots -->
+  <circle cx="380" cy="150" r="18" fill="#7aa2f7" opacity="0.9"/>
+  <circle cx="430" cy="150" r="12" fill="#9ece6a" opacity="0.7"/>
+  <circle cx="430" cy="195" r="12" fill="#e0af68" opacity="0.7"/>
+  
+  <!-- Connection lines -->
+  <path d="M380 150L418 150" stroke="#7aa2f7" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <path d="M380 150L418 195" stroke="#7aa2f7" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#7aa2f7" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#1a1b26" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

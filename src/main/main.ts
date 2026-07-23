@@ -1,11 +1,68 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import { SSHManager } from './ssh-manager';
 import { ConnectionStore } from './connection-store';
 import { SFTPManager } from './sftp-manager';
 import { SettingsStore } from './settings-store';
 import { parseSessionFile } from './session-importer';
+
+// Fix DPI scaling issues on Windows
+app.commandLine.appendSwitch('high-dpi-support', '1');
+app.commandLine.appendSwitch('force-device-scale-factor', '1');
+
+// Logger — portable, cross-platform, size-limited
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_OLD_LOGS = 2; // Keep 2 rotated files
+
+// Log directory: next to the app executable (portable)
+// In dev: project root/logs, in production: next to the packaged app
+const logDir = app.isPackaged
+  ? path.join(path.dirname(app.getPath('exe')), 'logs')
+  : path.join(path.dirname(__dirname), '..', 'logs');
+const logFile = path.join(logDir, 'nexterm.log');
+
+function rotateLogIfNeeded() {
+  try {
+    if (!fs.existsSync(logFile)) return;
+    const stat = fs.statSync(logFile);
+    if (stat.size < MAX_LOG_SIZE) return;
+
+    // Rotate: nexterm.log → nexterm.1.log, nexterm.1.log → nexterm.2.log
+    for (let i = MAX_OLD_LOGS - 1; i >= 1; i--) {
+      const older = path.join(logDir, `nexterm.${i}.log`);
+      const newer = path.join(logDir, `nexterm.${i - 1}.log`);
+      if (fs.existsSync(newer)) {
+        if (fs.existsSync(older)) fs.unlinkSync(older);
+        fs.renameSync(newer, older);
+      }
+    }
+    // Current → .0.log
+    const first = path.join(logDir, 'nexterm.0.log');
+    if (fs.existsSync(first)) fs.unlinkSync(first);
+    fs.renameSync(logFile, first);
+  } catch {
+    // Ignore rotation errors
+  }
+}
+
+function log(level: 'INFO' | 'WARN' | 'ERROR', message: string) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] [${level}] ${message}`;
+  console.log(line);
+  try {
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+    rotateLogIfNeeded();
+    fs.appendFileSync(logFile, line + '\n');
+  } catch {
+    // Ignore write errors
+  }
+}
+
+log('INFO', `NexTerm v${app.getVersion()} starting`);
+log('INFO', `Platform: ${process.platform}, Arch: ${process.arch}`);
+log('INFO', `Log path: ${logFile}`);
 
 let mainWindow: BrowserWindow | null = null;
 const sshManager = new SSHManager();
@@ -25,12 +82,18 @@ function createWindow() {
     frame: false,
     resizable: true,
     thickFrame: true,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      zoomFactor: 1.0,
     },
   });
+
+  // Ensure zoom stays at 1.0 (prevents accidental Ctrl+scroll zoom)
+  mainWindow.webContents.setZoomFactor(1.0);
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
 
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
@@ -87,6 +150,7 @@ ipcMain.handle('dialog:openFile', async (_event, options: { title?: string; filt
 
 // SSH Connection handlers
 ipcMain.handle('ssh:connect', async (_event, connection) => {
+  log('INFO', `SSH connecting to ${connection.host}:${connection.port} as ${connection.username}`);
   try {
     const settings = settingsStore.getAll();
 
@@ -108,8 +172,10 @@ ipcMain.handle('ssh:connect', async (_event, connection) => {
     }
 
     const sessionId = await sshManager.connect(connection);
+    log('INFO', `SSH connected: sessionId=${sessionId}`);
     return { success: true, sessionId };
   } catch (error: any) {
+    log('ERROR', `SSH connect failed: ${error.message}`);
     return { success: false, error: error.message };
   }
 });
@@ -306,6 +372,11 @@ ipcMain.handle('sftp:writeFile', async (_event, sessionId: string, remotePath: s
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+});
+
+// Log path handler
+ipcMain.handle('app:getLogPath', async () => {
+  return logFile;
 });
 
 // Settings handlers

@@ -17,6 +17,15 @@ export default {
         'surface-light': '#2f3549',
         'border': '#3b4261',
       },
+      animation: {
+        'spin-slow': 'spin-slow 8s linear infinite',
+      },
+      keyframes: {
+        'spin-slow': {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
+      },
     },
   },
   plugins: [],

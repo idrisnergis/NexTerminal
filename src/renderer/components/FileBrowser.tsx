@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Folder,
   File,
@@ -33,7 +33,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
   const [renameValue, setRenameValue] = useState('');
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-
+  const hasLoadedRef = useRef(false);
   const loadFiles = useCallback(async (dirPath: string) => {
     setLoading(true);
     setError(null);
@@ -52,7 +52,8 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
   }, [sessionId]);
 
   useEffect(() => {
-    if (isVisible && sessionId) {
+    if (isVisible && sessionId && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
       loadFiles('/');
     }
   }, [sessionId, isVisible, loadFiles]);

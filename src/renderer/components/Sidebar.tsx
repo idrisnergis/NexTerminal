@@ -242,7 +242,7 @@ function Sidebar({ collapsed, refreshTrigger, onToggle, onConnect, onNewConnecti
   }
 
   return (
-    <div className="h-full bg-sidebar-bg border-r border-border flex flex-col" onClick={() => setFolderContextMenu(null)}>
+    <div className="h-full bg-sidebar-bg border-r border-border flex flex-col overflow-hidden" onClick={() => setFolderContextMenu(null)}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/50">
         <h2 className="text-xs font-semibold text-terminal-fg/90">Connections</h2>

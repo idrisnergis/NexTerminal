@@ -185,16 +185,24 @@ function TerminalView({ sessionId, isActive, onReconnect, onCloseTab }: Terminal
   }, [sessionId]);
 
   useEffect(() => {
-    if (isActive) {
-      setTimeout(() => {
-        handleResize();
-        const hasModal = document.querySelector('[class*="fixed inset-0"]');
-        if (!hasModal) {
-          xtermRef.current?.focus();
+    if (isActive && xtermRef.current && fitAddonRef.current) {
+      // Terminal becomes visible — refit and refresh content
+      // Small delay to ensure parent element is no longer display:none
+      const timer = setTimeout(() => {
+        try {
+          fitAddonRef.current!.fit();
+          const { cols, rows } = xtermRef.current!;
+          window.electronAPI.sshResize(sessionId, cols, rows);
+          xtermRef.current!.refresh(0, xtermRef.current!.rows - 1);
+          xtermRef.current!.focus();
+        } catch {
+          // Ignore
         }
       }, 50);
+
+      return () => clearTimeout(timer);
     }
-  }, [isActive, handleResize]);
+  }, [isActive, sessionId]);
 
   return (
     <div

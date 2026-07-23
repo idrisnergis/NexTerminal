@@ -6,9 +6,11 @@ import ConnectionDialog from './components/ConnectionDialog';
 import SettingsDialog from './components/SettingsDialog';
 import QuickAuthDialog from './components/QuickAuthDialog';
 import ResizeHandle from './components/ResizeHandle';
+import SplashScreen from './components/SplashScreen';
 import { SavedConnection, TerminalTab } from './types/electron';
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
@@ -184,12 +186,13 @@ function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-terminal-bg select-none">
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       <TitleBar onOpenSettings={() => setShowSettings(true)} />
 
       <div className="flex flex-1 overflow-hidden">
         {!sidebarCollapsed ? (
           <>
-            <div style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+            <div style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="h-full">
               <Sidebar
                 refreshTrigger={refreshKey}
                 collapsed={false}
