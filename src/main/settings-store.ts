@@ -22,13 +22,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   terminalFontSize: 14,
 };
 
-// Portable data directory — next to the app itself
-function getPortableDataDir(): string {
-  if (app.isPackaged) {
-    return path.join(path.dirname(app.getPath('exe')), 'data');
-  } else {
-    return path.join(path.dirname(__dirname), '..', 'data');
-  }
+// One canonical, writable directory shared by dev, BAT and packaged EXE builds.
+function getDataDir(): string {
+  return app.getPath('userData');
 }
 
 export class SettingsStore {
@@ -36,24 +32,26 @@ export class SettingsStore {
   private settings: AppSettings;
 
   constructor() {
-    const dataDir = getPortableDataDir();
+    const dataDir = getDataDir();
     this.filePath = path.join(dataDir, 'settings.json');
-    this.migrateFromUserData();
+    this.migrateFromLegacyLocations();
     this.settings = this.load();
   }
 
-  // One-time migration from old userData location
-  private migrateFromUserData(): void {
+  // One-time migration from every location used by older builds.
+  private migrateFromLegacyLocations(): void {
     if (fs.existsSync(this.filePath)) return;
     try {
+      const projectDataPath = path.resolve(__dirname, '..', '..', 'data', 'settings.json');
+      const executableDataPath = path.join(path.dirname(app.getPath('exe')), 'data', 'settings.json');
       const possiblePaths = [
-        path.join(app.getPath('userData'), 'settings.json'),
+        projectDataPath,
+        executableDataPath,
         path.join(app.getPath('appData'), 'Electron', 'settings.json'),
         path.join(app.getPath('appData'), 'nexterm', 'settings.json'),
-        path.join(app.getPath('appData'), 'NexTerm', 'settings.json'),
       ];
       for (const oldPath of possiblePaths) {
-        if (fs.existsSync(oldPath)) {
+        if (oldPath !== this.filePath && fs.existsSync(oldPath)) {
           const dir = path.dirname(this.filePath);
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
           fs.copyFileSync(oldPath, this.filePath);

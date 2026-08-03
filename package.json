@@ -13,7 +13,7 @@
     "start": "npm run build && electron dist/main/main.js",
     "start:dev": "set NODE_ENV=development&& npm run build:main && electron dist/main/main.js",
     "run": "npm run build && electron .",
-    "package": "npm run build && electron-builder"
+    "package": "npm run build && electron-builder --win dir --config.win.signAndEditExecutable=false"
   },
   "dependencies": {
     "ssh2": "^1.15.0",

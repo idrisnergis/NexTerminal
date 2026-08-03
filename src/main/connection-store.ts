@@ -14,15 +14,9 @@ export interface SavedConnection {
   lastConnected?: string;
 }
 
-// Portable data directory — next to the app itself
-function getPortableDataDir(): string {
-  if (app.isPackaged) {
-    // Packaged: data folder next to the exe
-    return path.join(path.dirname(app.getPath('exe')), 'data');
-  } else {
-    // Development: data folder in project root
-    return path.join(path.dirname(__dirname), '..', 'data');
-  }
+// One canonical, writable directory shared by dev, BAT and packaged EXE builds.
+function getDataDir(): string {
+  return app.getPath('userData');
 }
 
 export class ConnectionStore {
@@ -30,25 +24,26 @@ export class ConnectionStore {
   private connections: SavedConnection[] = [];
 
   constructor() {
-    const dataDir = getPortableDataDir();
+    const dataDir = getDataDir();
     this.filePath = path.join(dataDir, 'connections.json');
-    this.migrateFromUserData();
+    this.migrateFromLegacyLocations();
     this.load();
   }
 
-  // One-time migration from old userData location
-  private migrateFromUserData(): void {
-    if (fs.existsSync(this.filePath)) return; // Already have portable data
+  // One-time migration from every location used by older builds.
+  private migrateFromLegacyLocations(): void {
+    if (fs.existsSync(this.filePath)) return;
     try {
-      // Check multiple possible old locations
+      const projectDataPath = path.resolve(__dirname, '..', '..', 'data', 'connections.json');
+      const executableDataPath = path.join(path.dirname(app.getPath('exe')), 'data', 'connections.json');
       const possiblePaths = [
-        path.join(app.getPath('userData'), 'connections.json'),
+        projectDataPath,
+        executableDataPath,
         path.join(app.getPath('appData'), 'Electron', 'connections.json'),
         path.join(app.getPath('appData'), 'nexterm', 'connections.json'),
-        path.join(app.getPath('appData'), 'NexTerm', 'connections.json'),
       ];
       for (const oldPath of possiblePaths) {
-        if (fs.existsSync(oldPath)) {
+        if (oldPath !== this.filePath && fs.existsSync(oldPath)) {
           const dir = path.dirname(this.filePath);
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
           fs.copyFileSync(oldPath, this.filePath);

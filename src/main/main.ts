@@ -8,6 +8,10 @@ import { SFTPManager } from './sftp-manager';
 import { SettingsStore } from './settings-store';
 import { parseSessionFile } from './session-importer';
 
+// Keep the app identity and data path identical in development and packaged builds.
+app.setName('NexTerm');
+app.setPath('userData', path.join(app.getPath('appData'), 'NexTerm'));
+
 // Fix DPI scaling issues on Windows
 app.commandLine.appendSwitch('high-dpi-support', '1');
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
