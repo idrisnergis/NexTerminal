@@ -58,6 +58,32 @@ function SettingsDialog({ onClose }: SettingsDialogProps) {
     }
   };
 
+  const handleExportConnections = async () => {
+    setImportStatus(null);
+    const connections = await window.electronAPI.getConnections();
+    if (connections.length === 0) {
+      setImportStatus('✗ No connections to export');
+      return;
+    }
+    // Create a blob and trigger download via IPC
+    const result = await window.electronAPI.exportConnections();
+    if (result.success) {
+      setImportStatus(`✓ ${connections.length} connection(s) exported`);
+    } else if (result.error) {
+      setImportStatus(`✗ Export failed: ${result.error}`);
+    }
+  };
+
+  const handleImportConnectionsJson = async () => {
+    setImportStatus(null);
+    const result = await window.electronAPI.importConnectionsJson();
+    if (result.success) {
+      setImportStatus(`✓ ${result.count} connection(s) imported!`);
+    } else if (result.error) {
+      setImportStatus(`✗ Import failed: ${result.error}`);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-surface w-[560px] max-h-[85vh] rounded-xl shadow-2xl border border-border overflow-hidden flex flex-col">
@@ -220,30 +246,45 @@ function SettingsDialog({ onClose }: SettingsDialogProps) {
             </div>
           </div>
 
-          {/* Import Section */}
+          {/* Import / Export Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-medium text-accent">
               <Download size={16} />
-              <span>Import Connections</span>
+              <span>Import / Export Connections</span>
             </div>
 
             <div className="pl-6 space-y-3">
               <p className="text-xs text-terminal-fg/50">
-                Import saved sessions from an .ini or .mxtsessions file.
+                Export all saved connections as JSON or import from a file.
               </p>
 
-              <button
-                onClick={handleImportSessions}
-                className="flex items-center gap-3 w-full p-3 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
-              >
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <FileUp size={18} className="text-accent" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium">Import Sessions</div>
-                  <div className="text-xs text-terminal-fg/50">.ini or .mxtsessions file</div>
-                </div>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExportConnections}
+                  className="flex items-center gap-2 flex-1 p-3 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all"
+                >
+                  <div className="p-2 rounded-lg bg-success/10">
+                    <Download size={16} className="text-success" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-medium">Export</div>
+                    <div className="text-[10px] text-terminal-fg/50">Save as JSON</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleImportConnectionsJson}
+                  className="flex items-center gap-2 flex-1 p-3 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
+                >
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <FileUp size={16} className="text-accent" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-medium">Import</div>
+                    <div className="text-[10px] text-terminal-fg/50">From JSON file</div>
+                  </div>
+                </button>
+              </div>
 
               {importStatus && (
                 <div className={`text-xs p-2 rounded-lg ${
@@ -252,6 +293,19 @@ function SettingsDialog({ onClose }: SettingsDialogProps) {
                   {importStatus}
                 </div>
               )}
+
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs text-terminal-fg/50 mb-2">
+                  Or import from PuTTY / MobaXterm session files:
+                </p>
+                <button
+                  onClick={handleImportSessions}
+                  className="flex items-center gap-2 w-full p-2.5 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
+                >
+                  <FileUp size={14} className="text-accent" />
+                  <span className="text-xs font-medium">Import .ini / .mxtsessions</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

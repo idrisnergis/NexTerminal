@@ -12,6 +12,7 @@
     "build:renderer": "vite build --config vite.config.ts --outDir ../../dist/renderer --emptyOutDir",
     "start": "npm run build && electron dist/main/main.js",
     "start:dev": "set NODE_ENV=development&& npm run build:main && electron dist/main/main.js",
+    "run": "npm run build && electron .",
     "package": "npm run build && electron-builder"
   },
   "dependencies": {
@@ -43,10 +44,23 @@
     "appId": "com.nexterm.app",
     "productName": "NexTerm",
     "files": [
-      "dist/**/*"
+      "dist/**/*",
+      "node_modules/**/*"
     ],
     "directories": {
       "output": "release"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dir"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "portable": {
+      "artifactName": "NexTerm-Portable.exe"
     }
   }
 }

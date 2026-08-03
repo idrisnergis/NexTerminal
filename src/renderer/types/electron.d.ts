@@ -44,6 +44,8 @@ export interface ElectronAPI {
 
   // Import
   importSessions: () => Promise<{ success: boolean; count?: number; error?: string }>;
+  exportConnections: () => Promise<{ success: boolean; error?: string }>;
+  importConnectionsJson: () => Promise<{ success: boolean; count?: number; error?: string }>;
 
   // Local terminal
   localStart: () => Promise<{ success: boolean; sessionId?: string; error?: string }>;

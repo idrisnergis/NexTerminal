@@ -434,6 +434,74 @@ ipcMain.handle('import:sessions', async () => {
   }
 });
 
+// Export connections as JSON
+ipcMain.handle('export:connections', async () => {
+  const result = await dialog.showSaveDialog(mainWindow!, {
+    title: 'Export Connections',
+    defaultPath: 'nexterm-connections.json',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+    ],
+  });
+  if (result.canceled || !result.filePath) return { success: false };
+
+  try {
+    const connections = connectionStore.getAll();
+    fs.writeFileSync(result.filePath, JSON.stringify(connections, null, 2), 'utf-8');
+    log('INFO', `Exported ${connections.length} connections to ${result.filePath}`);
+    return { success: true };
+  } catch (error: any) {
+    log('ERROR', `Export failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Import connections from JSON
+ipcMain.handle('import:connectionsJson', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Import Connections',
+    properties: ['openFile'],
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { success: false };
+
+  try {
+    const filePath = result.filePaths[0];
+    const data = fs.readFileSync(filePath, 'utf-8');
+    const connections = JSON.parse(data);
+
+    if (!Array.isArray(connections)) {
+      return { success: false, error: 'Invalid file format — expected an array of connections' };
+    }
+
+    let imported = 0;
+    for (const conn of connections) {
+      if (conn.host && conn.name) {
+        connectionStore.save({
+          id: conn.id || Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+          name: conn.name,
+          host: conn.host,
+          port: conn.port || 22,
+          username: conn.username || '',
+          authType: conn.authType || 'password',
+          privateKeyPath: conn.privateKeyPath || '',
+          group: conn.group || '',
+        });
+        imported++;
+      }
+    }
+
+    log('INFO', `Imported ${imported} connections from ${filePath}`);
+    return { success: true, count: imported };
+  } catch (error: any) {
+    log('ERROR', `Import JSON failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Local terminal handlers
 ipcMain.handle('local:start', async () => {
   try {

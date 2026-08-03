@@ -60,8 +60,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (partial: any) => ipcRenderer.invoke('settings:update', partial),
 
-  // Import
+  // Import / Export
   importSessions: () => ipcRenderer.invoke('import:sessions'),
+  exportConnections: () => ipcRenderer.invoke('export:connections'),
+  importConnectionsJson: () => ipcRenderer.invoke('import:connectionsJson'),
 
   // Local terminal
   localStart: () => ipcRenderer.invoke('local:start'),

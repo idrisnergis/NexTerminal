@@ -14,14 +14,50 @@ export interface SavedConnection {
   lastConnected?: string;
 }
 
+// Portable data directory — next to the app itself
+function getPortableDataDir(): string {
+  if (app.isPackaged) {
+    // Packaged: data folder next to the exe
+    return path.join(path.dirname(app.getPath('exe')), 'data');
+  } else {
+    // Development: data folder in project root
+    return path.join(path.dirname(__dirname), '..', 'data');
+  }
+}
+
 export class ConnectionStore {
   private filePath: string;
   private connections: SavedConnection[] = [];
 
   constructor() {
-    const userDataPath = app.getPath('userData');
-    this.filePath = path.join(userDataPath, 'connections.json');
+    const dataDir = getPortableDataDir();
+    this.filePath = path.join(dataDir, 'connections.json');
+    this.migrateFromUserData();
     this.load();
+  }
+
+  // One-time migration from old userData location
+  private migrateFromUserData(): void {
+    if (fs.existsSync(this.filePath)) return; // Already have portable data
+    try {
+      // Check multiple possible old locations
+      const possiblePaths = [
+        path.join(app.getPath('userData'), 'connections.json'),
+        path.join(app.getPath('appData'), 'Electron', 'connections.json'),
+        path.join(app.getPath('appData'), 'nexterm', 'connections.json'),
+        path.join(app.getPath('appData'), 'NexTerm', 'connections.json'),
+      ];
+      for (const oldPath of possiblePaths) {
+        if (fs.existsSync(oldPath)) {
+          const dir = path.dirname(this.filePath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.copyFileSync(oldPath, this.filePath);
+          break;
+        }
+      }
+    } catch {
+      // Ignore migration errors
+    }
   }
 
   private load(): void {
