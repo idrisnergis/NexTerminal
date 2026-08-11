@@ -16,12 +16,13 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Frameless window drag region */
+  /* Frameless window drag region — only applied to title bar */
   .draggable {
     -webkit-app-region: drag;
   }
 
-  .no-drag {
+  .no-drag,
+  .no-drag * {
     -webkit-app-region: no-drag;
   }
 

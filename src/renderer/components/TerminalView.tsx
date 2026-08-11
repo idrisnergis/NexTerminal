@@ -207,8 +207,8 @@ function TerminalView({ sessionId, isActive, onReconnect, onCloseTab }: Terminal
   return (
     <div
       ref={terminalRef}
-      className="w-full h-full p-1"
-      style={{ backgroundColor: '#1a1b26' }}
+      className="terminal-host relative w-full h-full min-w-0 overflow-hidden p-1"
+      style={{ backgroundColor: '#1a1b26', contain: 'strict' }}
       onClick={() => xtermRef.current?.focus()}
     />
   );

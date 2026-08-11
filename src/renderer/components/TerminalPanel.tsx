@@ -134,13 +134,13 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
         {/* Terminal + File Browser area — always rendered once tabs exist */}
         {tabs.length > 0 && (
           <div className={`absolute inset-0 flex flex-col ${isHomeActive ? 'invisible pointer-events-none' : ''}`}>
-            <div className="flex-1 flex overflow-hidden">
-              {/* Terminals — all stay mounted, only active one visible */}
-              <div className="flex-1 relative">
+            <div className="flex-1 flex min-w-0 overflow-hidden relative isolate">
+              {/* Terminals — constrained so xterm cannot overlap the file browser */}
+              <div className="flex-1 min-w-0 relative overflow-hidden z-0">
                 {tabs.map((tab) => (
                   <div
                     key={tab.id}
-                    className={`absolute inset-0 ${tab.id === activeTabId && !isHomeActive ? '' : 'hidden'}`}
+                    className={`absolute inset-0 min-w-0 overflow-hidden ${tab.id === activeTabId && !isHomeActive ? '' : 'hidden'}`}
                   >
                     <TerminalView
                       sessionId={tab.sessionId}
@@ -161,8 +161,8 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
                 .map((tab) => (
                   <div
                     key={`fb-${tab.id}`}
-                    className={tab.id === activeTabId && !isHomeActive ? '' : 'hidden'}
-                    style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth }}
+                    className={`${tab.id === activeTabId && !isHomeActive ? 'relative z-20 shrink-0 h-full overflow-hidden pointer-events-auto' : 'hidden'}`}
+                    style={{ width: fileBrowserWidth, minWidth: fileBrowserWidth, maxWidth: fileBrowserWidth }}
                   >
                     <FileBrowser
                       sessionId={tab.sessionId}

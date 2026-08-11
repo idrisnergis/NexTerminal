@@ -12,9 +12,8 @@ import { parseSessionFile } from './session-importer';
 app.setName('NexTerm');
 app.setPath('userData', path.join(app.getPath('appData'), 'NexTerm'));
 
-// Fix DPI scaling issues on Windows
-app.commandLine.appendSwitch('high-dpi-support', '1');
-app.commandLine.appendSwitch('force-device-scale-factor', '1');
+// Let Chromium use the operating system's native DPI scale. Forcing a 1x scale
+// causes pointer coordinates to drift after resize/maximize on scaled displays.
 
 // Logger — portable, cross-platform, size-limited
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
