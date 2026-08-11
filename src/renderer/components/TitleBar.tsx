@@ -5,8 +5,10 @@ interface TitleBarProps {
 }
 
 function TitleBar({ onOpenSettings }: TitleBarProps) {
+  const usesCustomWindowControls = window.electronAPI.platform === 'win32';
+
   return (
-    <div className="h-8 bg-sidebar-bg flex items-center justify-between select-none draggable border-b border-border/50">
+    <div className={`h-8 bg-sidebar-bg flex items-center justify-between select-none border-b border-border/50 ${usesCustomWindowControls ? 'draggable' : ''}`}>
       {/* App Icon & Title */}
       <div className="flex items-center gap-2 px-3 no-drag">
         <Terminal size={16} className="text-accent" />
@@ -23,28 +25,20 @@ function TitleBar({ onOpenSettings }: TitleBarProps) {
         >
           <Settings size={13} />
         </button>
-        <div className="w-px h-4 bg-border/50 self-center" />
-        <button
-          onClick={() => window.electronAPI.minimize()}
-          className="titlebar-button"
-          aria-label="Minimize"
-        >
-          <Minus size={14} />
-        </button>
-        <button
-          onClick={() => window.electronAPI.maximize()}
-          className="titlebar-button"
-          aria-label="Maximize"
-        >
-          <Square size={11} />
-        </button>
-        <button
-          onClick={() => window.electronAPI.close()}
-          className="titlebar-button close"
-          aria-label="Close"
-        >
-          <X size={14} />
-        </button>
+        {usesCustomWindowControls && (
+          <>
+            <div className="w-px h-4 bg-border/50 self-center" />
+            <button onClick={() => window.electronAPI.minimize()} className="titlebar-button" aria-label="Minimize">
+              <Minus size={14} />
+            </button>
+            <button onClick={() => window.electronAPI.maximize()} className="titlebar-button" aria-label="Maximize">
+              <Square size={11} />
+            </button>
+            <button onClick={() => window.electronAPI.close()} className="titlebar-button close" aria-label="Close">
+              <X size={14} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

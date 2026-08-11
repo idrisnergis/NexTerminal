@@ -4,16 +4,19 @@
   "description": "Modern SSH Terminal Manager",
   "main": "dist/main/main.js",
   "scripts": {
-    "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
+    "dev": "npm run build:main && concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:electron\"",
     "dev:renderer": "vite --config vite.config.ts",
     "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:electron": "node scripts/start-electron.cjs",
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build --config vite.config.ts --outDir ../../dist/renderer --emptyOutDir",
     "start": "npm run build && electron dist/main/main.js",
-    "start:dev": "set NODE_ENV=development&& npm run build:main && electron dist/main/main.js",
-    "run": "npm run build && electron .",
-    "package": "npm run build && electron-builder --win dir --config.win.signAndEditExecutable=false"
+    "run": "npm start",
+    "package": "npm run build && electron-builder --dir",
+    "package:win": "npm run build && electron-builder --win portable",
+    "package:mac": "npm run build && electron-builder --mac dmg zip",
+    "package:linux": "npm run build && electron-builder --linux AppImage tar.gz"
   },
   "dependencies": {
     "ssh2": "^1.15.0",
@@ -44,23 +47,25 @@
     "appId": "com.nexterm.app",
     "productName": "NexTerm",
     "files": [
-      "dist/**/*",
-      "node_modules/**/*"
+      "dist/**/*"
     ],
     "directories": {
       "output": "release"
     },
     "win": {
-      "target": "portable"
+      "target": ["portable"],
+      "artifactName": "NexTerm-${version}-Portable.${ext}"
     },
     "mac": {
-      "target": "dir"
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "NexTerm-${version}-${arch}.${ext}"
     },
     "linux": {
-      "target": "AppImage"
-    },
-    "portable": {
-      "artifactName": "NexTerm-Portable.exe"
+      "target": ["AppImage", "tar.gz"],
+      "category": "Development",
+      "artifactName": "NexTerm-${version}-${arch}.${ext}",
+      "synopsis": "SSH terminal and SFTP connection manager"
     }
   }
 }

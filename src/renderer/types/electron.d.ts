@@ -1,4 +1,6 @@
 export interface ElectronAPI {
+  platform: 'win32' | 'darwin' | 'linux';
+
   // Window
   minimize: () => void;
   maximize: () => void;

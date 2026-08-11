@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { spawn, ChildProcess } from 'child_process';
 import { SSHManager } from './ssh-manager';
 import { ConnectionStore } from './connection-store';
@@ -19,11 +20,11 @@ app.setPath('userData', path.join(app.getPath('appData'), 'NexTerm'));
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_OLD_LOGS = 2; // Keep 2 rotated files
 
-// Log directory: next to the app executable (portable)
-// In dev: project root/logs, in production: next to the packaged app
-const logDir = app.isPackaged
-  ? path.join(path.dirname(app.getPath('exe')), 'logs')
-  : path.join(path.dirname(__dirname), '..', 'logs');
+// Use a writable per-user path on every platform:
+// Windows: %APPDATA%/NexTerm/logs
+// macOS: ~/Library/Application Support/NexTerm/logs
+// Linux: ~/.config/NexTerm/logs (or XDG_CONFIG_HOME)
+const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'nexterm.log');
 
 function rotateLogIfNeeded() {
@@ -75,17 +76,17 @@ const settingsStore = new SettingsStore();
 const localTerminals: Map<string, ChildProcess> = new Map();
 
 function createWindow() {
+  const isWindows = process.platform === 'win32';
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 500,
     title: 'NexTerm',
-    icon: path.join(__dirname, '../renderer/assets/icon.png'),
-    frame: false,
+    frame: !isWindows,
     resizable: true,
-    thickFrame: true,
-    autoHideMenuBar: true,
+    ...(isWindows ? { thickFrame: true } : {}),
+    autoHideMenuBar: process.platform !== 'darwin',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -546,12 +547,23 @@ ipcMain.handle('import:connectionsJson', async () => {
 ipcMain.handle('local:start', async () => {
   try {
     const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-    const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash';
+    const platform = process.platform;
+    const shell = platform === 'win32'
+      ? (process.env.COMSPEC || 'powershell.exe')
+      : (process.env.SHELL || (platform === 'darwin' ? '/bin/zsh' : '/bin/bash'));
+    const shellArgs = platform === 'win32'
+      ? (shell.toLowerCase().includes('powershell') ? ['-NoLogo'] : [])
+      : ['-i'];
+    const shellEnv = {
+      ...process.env,
+      ...(platform === 'win32' ? {} : { TERM: process.env.TERM || 'xterm-256color' }),
+    };
 
-    const proc = spawn(shell, [], {
-      env: process.env,
-      cwd: process.env.HOME || process.env.USERPROFILE || '/',
+    const proc = spawn(shell, shellArgs, {
+      env: shellEnv,
+      cwd: os.homedir(),
       shell: false,
+      windowsHide: true,
     });
 
     localTerminals.set(sessionId, proc);
