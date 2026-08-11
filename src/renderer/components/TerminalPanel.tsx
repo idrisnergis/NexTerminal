@@ -15,9 +15,11 @@ interface TerminalPanelProps {
   onReconnect?: (tab: TerminalTab) => void;
   onQuickConnect?: (searchTerm: string) => void;
   onStartLocalTerminal?: () => void;
+  terminalFontSize: number;
+  sidebarFontSize: number;
 }
 
-function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect, onQuickConnect, onStartLocalTerminal }: TerminalPanelProps) {
+function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect, onQuickConnect, onStartLocalTerminal, terminalFontSize, sidebarFontSize }: TerminalPanelProps) {
   const [fileBrowserVisible, setFileBrowserVisible] = useState<Record<string, boolean>>({});
   const [fileBrowserWidth, setFileBrowserWidth] = useState(280);
   const [showHome, setShowHome] = useState(true);
@@ -145,6 +147,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
                     <TerminalView
                       sessionId={tab.sessionId}
                       isActive={tab.id === activeTabId && !isHomeActive}
+                      fontSize={terminalFontSize}
                       onReconnect={() => onReconnect?.(tab)}
                       onCloseTab={() => onTabClose(tab.id)}
                     />
@@ -167,6 +170,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
                     <FileBrowser
                       sessionId={tab.sessionId}
                       isVisible={tab.id === activeTabId && !isHomeActive}
+                      fontSize={sidebarFontSize}
                       onToggle={() => toggleFileBrowser(tab.id)}
                     />
                   </div>

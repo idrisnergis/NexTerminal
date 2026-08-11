@@ -21,9 +21,10 @@ interface SidebarProps {
   onNewConnection: () => void;
   onEditConnection: (connection: SavedConnection) => void;
   onOpenSettings: () => void;
+  fontSize: number;
 }
 
-function Sidebar({ collapsed, refreshTrigger, onToggle, onConnect, onNewConnection, onEditConnection, onOpenSettings }: SidebarProps) {
+function Sidebar({ collapsed, refreshTrigger, onToggle, onConnect, onNewConnection, onEditConnection, onOpenSettings, fontSize }: SidebarProps) {
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -202,7 +203,7 @@ function Sidebar({ collapsed, refreshTrigger, onToggle, onConnect, onNewConnecti
 
   if (collapsed) {
     return (
-      <div className="w-12 bg-sidebar-bg border-r border-border flex flex-col items-center py-4 gap-4">
+      <div className="w-12 bg-sidebar-bg border-r border-border flex flex-col items-center py-4 gap-4 sidebar-font-sized" style={{ fontSize }}>
         <button
           onClick={onToggle}
           className="p-2 rounded-lg hover:bg-sidebar-hover transition-colors"
@@ -242,7 +243,7 @@ function Sidebar({ collapsed, refreshTrigger, onToggle, onConnect, onNewConnecti
   }
 
   return (
-    <div className="h-full bg-sidebar-bg border-r border-border flex flex-col overflow-hidden" onClick={() => setFolderContextMenu(null)}>
+    <div className="h-full bg-sidebar-bg border-r border-border flex flex-col overflow-hidden sidebar-font-sized" style={{ fontSize }} onClick={() => setFolderContextMenu(null)}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/50">
         <h2 className="text-xs font-semibold text-terminal-fg/90">Connections</h2>

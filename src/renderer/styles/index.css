@@ -26,6 +26,15 @@
     -webkit-app-region: no-drag;
   }
 
+  /* Let the saved sidebar font setting override Tailwind's fixed small sizes. */
+  .sidebar-font-sized .text-xs,
+  .sidebar-font-sized .text-sm,
+  .sidebar-font-sized .text-\[11px\],
+  .sidebar-font-sized .text-\[10px\],
+  .sidebar-font-sized .text-\[9px\] {
+    font-size: inherit !important;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;

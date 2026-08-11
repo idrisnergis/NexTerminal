@@ -7,11 +7,12 @@ import { WebLinksAddon } from 'xterm-addon-web-links';
 interface TerminalViewProps {
   sessionId: string;
   isActive: boolean;
+  fontSize: number;
   onReconnect?: () => void;
   onCloseTab?: () => void;
 }
 
-function TerminalView({ sessionId, isActive, onReconnect, onCloseTab }: TerminalViewProps) {
+function TerminalView({ sessionId, isActive, fontSize, onReconnect, onCloseTab }: TerminalViewProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -59,7 +60,7 @@ function TerminalView({ sessionId, isActive, onReconnect, onCloseTab }: Terminal
         brightCyan: '#7dcfff',
         brightWhite: '#c0caf5',
       },
-      fontSize: 14,
+      fontSize,
       fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
       cursorBlink: true,
       cursorStyle: 'bar',
@@ -183,6 +184,14 @@ function TerminalView({ sessionId, isActive, onReconnect, onCloseTab }: Terminal
       isInitializedRef.current = false;
     };
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!xtermRef.current) return;
+    xtermRef.current.options.fontSize = fontSize;
+    if (isActive) {
+      requestAnimationFrame(() => handleResize());
+    }
+  }, [fontSize, isActive, handleResize]);
 
   useEffect(() => {
     if (isActive && xtermRef.current && fitAddonRef.current) {

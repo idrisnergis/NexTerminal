@@ -21,9 +21,10 @@ interface FileBrowserProps {
   sessionId: string;
   isVisible: boolean;
   onToggle: () => void;
+  fontSize: number;
 }
 
-function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
+function FileBrowser({ sessionId, isVisible, onToggle, fontSize }: FileBrowserProps) {
   const [currentPath, setCurrentPath] = useState('/');
   const [files, setFiles] = useState<RemoteFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,7 +217,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="relative z-20 h-full w-full bg-sidebar-bg border-l border-border flex flex-col overflow-hidden pointer-events-auto no-drag" onClick={() => setContextMenu(null)}>
+    <div className="relative z-20 h-full w-full bg-sidebar-bg border-l border-border flex flex-col overflow-hidden pointer-events-auto no-drag sidebar-font-sized" style={{ fontSize }} onClick={() => setContextMenu(null)}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <span className="text-xs font-semibold text-terminal-fg/80">File Browser</span>

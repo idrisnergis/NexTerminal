@@ -4,9 +4,10 @@ import { AppSettings } from '../types/electron';
 
 interface SettingsDialogProps {
   onClose: () => void;
+  onSettingsChange: (settings: AppSettings) => void;
 }
 
-function SettingsDialog({ onClose }: SettingsDialogProps) {
+function SettingsDialog({ onClose, onSettingsChange }: SettingsDialogProps) {
   const [settings, setSettings] = useState<AppSettings>({
     defaultSSHKeyPath: '',
     defaultSSHKeyPassphrase: '',
@@ -30,6 +31,7 @@ function SettingsDialog({ onClose }: SettingsDialogProps) {
 
   const handleSave = async () => {
     await window.electronAPI.updateSettings(settings);
+    onSettingsChange(settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

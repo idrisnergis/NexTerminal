@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
 import TerminalPanel from './components/TerminalPanel';
@@ -7,7 +7,7 @@ import SettingsDialog from './components/SettingsDialog';
 import QuickAuthDialog from './components/QuickAuthDialog';
 import ResizeHandle from './components/ResizeHandle';
 import SplashScreen from './components/SplashScreen';
-import { SavedConnection, TerminalTab } from './types/electron';
+import { AppSettings, SavedConnection, TerminalTab } from './types/electron';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -19,6 +19,19 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [settings, setSettings] = useState<AppSettings>({
+    defaultSSHKeyPath: '',
+    defaultSSHKeyPassphrase: '',
+    defaultUsername: '',
+    defaultPort: 22,
+    useDefaultKeyForAll: false,
+    sidebarFontSize: 11,
+    terminalFontSize: 14,
+  });
+
+  useEffect(() => {
+    window.electronAPI.getSettings().then(setSettings).catch(() => undefined);
+  }, []);
 
   // Quick auth dialog state
   const [quickAuthConnection, setQuickAuthConnection] = useState<SavedConnection | null>(null);
@@ -201,6 +214,7 @@ function App() {
                 onNewConnection={handleNewConnection}
                 onEditConnection={handleEditConnection}
                 onOpenSettings={() => setShowSettings(true)}
+                fontSize={settings.sidebarFontSize}
               />
             </div>
             <ResizeHandle direction="horizontal" onResize={handleSidebarResize} />
@@ -214,6 +228,7 @@ function App() {
             onNewConnection={handleNewConnection}
             onEditConnection={handleEditConnection}
             onOpenSettings={() => setShowSettings(true)}
+            fontSize={settings.sidebarFontSize}
           />
         )}
 
@@ -228,6 +243,8 @@ function App() {
             }}
             onStartLocalTerminal={handleStartLocalTerminal}
             onQuickConnect={handleQuickSearch}
+            terminalFontSize={settings.terminalFontSize}
+            sidebarFontSize={settings.sidebarFontSize}
           />
         </main>
       </div>
@@ -245,7 +262,10 @@ function App() {
       )}
 
       {showSettings && (
-        <SettingsDialog onClose={handleSettingsClose} />
+        <SettingsDialog
+          onClose={handleSettingsClose}
+          onSettingsChange={setSettings}
+        />
       )}
 
       {quickAuthConnection && (
