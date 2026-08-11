@@ -25,8 +25,9 @@ export interface ElectronAPI {
   // SFTP
   sftpConnect: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
   sftpList: (sessionId: string, path: string) => Promise<{ success: boolean; files?: RemoteFile[]; error?: string }>;
-  sftpDownload: (sessionId: string, remotePath: string) => Promise<{ success: boolean; error?: string }>;
-  sftpUpload: (sessionId: string, remotePath: string) => Promise<{ success: boolean; error?: string }>;
+  sftpDownload: (sessionId: string, remotePath: string) => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+  sftpUpload: (sessionId: string, remotePath: string) => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+  onSFTPProgress: (sessionId: string, callback: (progress: SFTPTransferProgress) => void) => () => void;
   sftpMkdir: (sessionId: string, remotePath: string) => Promise<{ success: boolean; error?: string }>;
   sftpRename: (sessionId: string, oldPath: string, newPath: string) => Promise<{ success: boolean; error?: string }>;
   sftpDelete: (sessionId: string, remotePath: string) => Promise<{ success: boolean; error?: string }>;
@@ -65,6 +66,16 @@ export interface SavedConnection {
   passphrase?: string;
   group?: string;
   lastConnected?: string;
+}
+
+export interface SFTPTransferProgress {
+  direction: 'upload' | 'download';
+  fileName: string;
+  transferred: number;
+  total: number;
+  currentFile: number;
+  fileCount: number;
+  percent: number;
 }
 
 export interface RemoteFile {

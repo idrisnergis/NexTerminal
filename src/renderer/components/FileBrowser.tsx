@@ -13,8 +13,9 @@ import {
   ChevronRight,
   FileText,
   X,
+  CheckCircle,
 } from 'lucide-react';
-import { RemoteFile } from '../types/electron';
+import { RemoteFile, SFTPTransferProgress } from '../types/electron';
 
 interface FileBrowserProps {
   sessionId: string;
@@ -33,7 +34,18 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
   const [renameValue, setRenameValue] = useState('');
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [transfer, setTransfer] = useState<SFTPTransferProgress | null>(null);
+  const [transferDone, setTransferDone] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+
+  // Listen for progress events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onSFTPProgress(sessionId, (progress) => {
+      setTransfer(progress);
+    });
+    return unsubscribe;
+  }, [sessionId]);
+
   const loadFiles = useCallback(async (dirPath: string) => {
     setLoading(true);
     setError(null);
@@ -81,14 +93,28 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
 
   const handleDownload = async (file: RemoteFile) => {
     const remotePath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
-    await window.electronAPI.sftpDownload(sessionId, remotePath);
     setContextMenu(null);
+    setTransfer({ direction: 'download', fileName: file.name, transferred: 0, total: file.size, currentFile: 1, fileCount: 1, percent: 0 });
+    const result = await window.electronAPI.sftpDownload(sessionId, remotePath);
+    setTransfer(null);
+    if (result.success) {
+      setTransferDone(`Downloaded: ${file.name}`);
+      setTimeout(() => setTransferDone(null), 3000);
+    } else if (result.error) {
+      setError(`Download failed: ${result.error}`);
+    }
   };
 
   const handleUpload = async () => {
+    setTransfer({ direction: 'upload', fileName: '...', transferred: 0, total: 0, currentFile: 0, fileCount: 0, percent: 0 });
     const result = await window.electronAPI.sftpUpload(sessionId, currentPath);
+    setTransfer(null);
     if (result.success) {
+      setTransferDone('Upload complete');
+      setTimeout(() => setTransferDone(null), 3000);
       loadFiles(currentPath);
+    } else if (result.error) {
+      setError(`Upload failed: ${result.error}`);
     }
   };
 
@@ -107,7 +133,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
     if (result.success) {
       loadFiles(currentPath);
     } else {
-      alert(`Delete failed: ${result.error}`);
+      setError(`Delete failed: ${result.error}`);
     }
     setContextMenu(null);
   };
@@ -130,7 +156,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
     if (result.success) {
       loadFiles(currentPath);
     } else {
-      alert(`Rename failed: ${result.error}`);
+      setError(`Rename failed: ${result.error}`);
     }
     setRenameTarget(null);
   };
@@ -145,7 +171,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
     if (result.success) {
       loadFiles(currentPath);
     } else {
-      alert(`Create folder failed: ${result.error}`);
+      setError(`Create folder failed: ${result.error}`);
     }
     setNewFolderMode(false);
     setNewFolderName('');
@@ -168,6 +194,21 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
       i++;
     }
     return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  const formatDate = (timestamp: number): string => {
+    if (!timestamp) return '';
+    const d = new Date(timestamp * 1000);
+    const now = new Date();
+    const isThisYear = d.getFullYear() === now.getFullYear();
+    const month = d.toLocaleString('default', { month: 'short' });
+    const day = d.getDate();
+    if (isThisYear) {
+      const hours = d.getHours().toString().padStart(2, '0');
+      const mins = d.getMinutes().toString().padStart(2, '0');
+      return `${month} ${day} ${hours}:${mins}`;
+    }
+    return `${month} ${day} ${d.getFullYear()}`;
   };
 
   const breadcrumbs = currentPath.split('/').filter(Boolean);
@@ -200,63 +241,45 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
 
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30">
-        <button
-          onClick={navigateUp}
-          className="p-1.5 rounded hover:bg-sidebar-hover transition-colors"
-          title="Go up"
-          disabled={currentPath === '/'}
-        >
+        <button onClick={navigateUp} className="p-1.5 rounded hover:bg-sidebar-hover transition-colors" title="Go up" disabled={currentPath === '/'}>
           <ArrowUp size={13} />
         </button>
-        <button
-          onClick={() => navigateToPath('/')}
-          className="p-1.5 rounded hover:bg-sidebar-hover transition-colors"
-          title="Home"
-        >
+        <button onClick={() => navigateToPath('/')} className="p-1.5 rounded hover:bg-sidebar-hover transition-colors" title="Home">
           <Home size={13} />
         </button>
         <div className="w-px h-4 bg-border/50 mx-1" />
-        <button
-          onClick={handleUpload}
-          className="p-1.5 rounded hover:bg-sidebar-hover transition-colors text-success"
-          title="Upload file"
-        >
+        <button onClick={handleUpload} className="p-1.5 rounded hover:bg-sidebar-hover transition-colors text-success" title="Upload file" disabled={!!transfer}>
           <Upload size={13} />
         </button>
-        <button
-          onClick={() => { setNewFolderMode(true); setNewFolderName(''); }}
-          className="p-1.5 rounded hover:bg-sidebar-hover transition-colors text-accent"
-          title="New folder"
-        >
+        <button onClick={() => { setNewFolderMode(true); setNewFolderName(''); }} className="p-1.5 rounded hover:bg-sidebar-hover transition-colors text-accent" title="New folder">
           <FolderPlus size={13} />
         </button>
       </div>
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-0.5 px-3 py-1.5 text-xs text-terminal-fg/50 overflow-x-auto border-b border-border/20">
-        <button
-          onClick={() => navigateToPath('/')}
-          className="hover:text-accent transition-colors shrink-0"
-        >
-          /
-        </button>
+        <button onClick={() => navigateToPath('/')} className="hover:text-accent transition-colors shrink-0">/</button>
         {breadcrumbs.map((crumb, i) => (
           <span key={i} className="flex items-center gap-0.5 shrink-0">
             <ChevronRight size={10} />
-            <button
-              onClick={() => navigateToPath('/' + breadcrumbs.slice(0, i + 1).join('/'))}
-              className="hover:text-accent transition-colors"
-            >
-              {crumb}
-            </button>
+            <button onClick={() => navigateToPath('/' + breadcrumbs.slice(0, i + 1).join('/'))} className="hover:text-accent transition-colors">{crumb}</button>
           </span>
         ))}
       </div>
 
       {/* Error */}
       {error && (
-        <div className="px-3 py-2 text-xs text-error bg-error/10 border-b border-error/20">
-          {error}
+        <div className="px-3 py-2 text-xs text-error bg-error/10 border-b border-error/20 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-error/60 hover:text-error"><X size={10} /></button>
+        </div>
+      )}
+
+      {/* Transfer Done toast */}
+      {transferDone && (
+        <div className="px-3 py-2 text-xs text-success bg-success/10 border-b border-success/20 flex items-center gap-2">
+          <CheckCircle size={12} />
+          <span>{transferDone}</span>
         </div>
       )}
 
@@ -265,18 +288,7 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
         <div className="px-3 py-2 border-b border-border/30">
           <div className="flex items-center gap-2">
             <FolderPlus size={14} className="text-accent shrink-0" />
-            <input
-              type="text"
-              className="input-field text-xs py-1"
-              placeholder="Folder name"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNewFolder();
-                if (e.key === 'Escape') setNewFolderMode(false);
-              }}
-              autoFocus
-            />
+            <input type="text" className="input-field text-xs py-1" placeholder="Folder name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') setNewFolderMode(false); }} autoFocus />
           </div>
         </div>
       )}
@@ -292,39 +304,25 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
             {files.map((file) => (
               <div
                 key={file.name}
-                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors text-xs ${
-                  selectedFile === file.name ? 'bg-accent/10 text-accent' : 'hover:bg-sidebar-hover'
-                }`}
+                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors text-xs ${selectedFile === file.name ? 'bg-accent/10 text-accent' : 'hover:bg-sidebar-hover'}`}
                 onClick={() => setSelectedFile(file.name)}
                 onDoubleClick={() => handleDoubleClick(file)}
                 onContextMenu={(e) => handleContextMenu(e, file)}
               >
                 {/* Icon */}
                 <div className="shrink-0">
-                  {file.type === 'directory' ? (
-                    <Folder size={14} className="text-warning" />
-                  ) : (
-                    <FileIcon name={file.name} />
-                  )}
+                  {file.type === 'directory' ? <Folder size={14} className="text-warning" /> : <FileIcon name={file.name} />}
                 </div>
 
-                {/* Name */}
+                {/* Name + Date */}
                 <div className="flex-1 min-w-0">
                   {renameTarget === file.name ? (
-                    <input
-                      type="text"
-                      className="input-field text-xs py-0 px-1"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') submitRename();
-                        if (e.key === 'Escape') setRenameTarget(null);
-                      }}
-                      onBlur={submitRename}
-                      autoFocus
-                    />
+                    <input type="text" className="input-field text-xs py-0 px-1" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenameTarget(null); }} onBlur={submitRename} autoFocus />
                   ) : (
-                    <span className="truncate block">{file.name}</span>
+                    <>
+                      <span className="truncate block leading-tight">{file.name}</span>
+                      <span className="text-[9px] text-terminal-fg/30 leading-tight">{formatDate(file.modifyTime)}</span>
+                    </>
                   )}
                 </div>
 
@@ -345,6 +343,28 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
         )}
       </div>
 
+      {/* Transfer Progress Bar */}
+      {transfer && (
+        <div className="px-3 py-2 border-t border-border/50 bg-surface/50">
+          <div className="flex items-center justify-between text-[10px] text-terminal-fg/70 mb-1">
+            <span className="truncate">
+              {transfer.direction === 'upload' ? '⬆' : '⬇'} {transfer.fileName}
+              {transfer.fileCount > 1 ? ` (${transfer.currentFile}/${transfer.fileCount})` : ''}
+            </span>
+            <span className="shrink-0 ml-2">{transfer.percent}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-terminal-bg rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-200 ${transfer.direction === 'upload' ? 'bg-success' : 'bg-accent'}`}
+              style={{ width: `${transfer.percent}%` }}
+            />
+          </div>
+          <div className="text-[9px] text-terminal-fg/40 mt-0.5">
+            {formatSize(transfer.transferred)} / {formatSize(transfer.total)}
+          </div>
+        </div>
+      )}
+
       {/* Status Bar */}
       <div className="px-3 py-1.5 border-t border-border/50 text-[10px] text-terminal-fg/40">
         {files.length} items • {currentPath}
@@ -352,72 +372,35 @@ function FileBrowser({ sessionId, isVisible, onToggle }: FileBrowserProps) {
 
       {/* Context Menu */}
       {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          file={contextMenu.file}
-          onDownload={() => handleDownload(contextMenu.file)}
-          onRename={() => handleRename(contextMenu.file)}
-          onDelete={() => handleDelete(contextMenu.file)}
-          onClose={() => setContextMenu(null)}
-        />
+        <ContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onDownload={() => handleDownload(contextMenu.file)} onRename={() => handleRename(contextMenu.file)} onDelete={() => handleDelete(contextMenu.file)} onClose={() => setContextMenu(null)} />
       )}
     </div>
   );
 }
 
-// File icon helper
 function FileIcon({ name }: { name: string }) {
   const ext = name.split('.').pop()?.toLowerCase();
   const textExts = ['txt', 'md', 'log', 'json', 'yml', 'yaml', 'xml', 'csv', 'conf', 'cfg', 'ini', 'sh', 'bash', 'py', 'js', 'ts', 'html', 'css'];
-
-  if (textExts.includes(ext || '')) {
-    return <FileText size={14} className="text-accent/60" />;
-  }
+  if (textExts.includes(ext || '')) return <FileText size={14} className="text-accent/60" />;
   return <File size={14} className="text-terminal-fg/40" />;
 }
 
-// Context Menu
-interface ContextMenuProps {
-  x: number;
-  y: number;
-  file: RemoteFile;
-  onDownload: () => void;
-  onRename: () => void;
-  onDelete: () => void;
-  onClose: () => void;
-}
+interface ContextMenuProps { x: number; y: number; file: RemoteFile; onDownload: () => void; onRename: () => void; onDelete: () => void; onClose: () => void; }
 
 function ContextMenu({ x, y, file, onDownload, onRename, onDelete }: ContextMenuProps) {
   return (
-    <div
-      className="fixed z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]"
-      style={{ left: Math.min(x, window.innerWidth - 180), top: Math.min(y, window.innerHeight - 150) }}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="fixed z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]" style={{ left: Math.min(x, window.innerWidth - 180), top: Math.min(y, window.innerHeight - 150) }} onClick={(e) => e.stopPropagation()}>
       {file.type === 'file' && (
-        <button
-          className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left"
-          onClick={onDownload}
-        >
-          <Download size={12} />
-          Download
+        <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left" onClick={onDownload}>
+          <Download size={12} /> Download
         </button>
       )}
-      <button
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left"
-        onClick={onRename}
-      >
-        <Edit size={12} />
-        Rename
+      <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left" onClick={onRename}>
+        <Edit size={12} /> Rename
       </button>
       <div className="h-px bg-border/50 my-1" />
-      <button
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left text-error"
-        onClick={onDelete}
-      >
-        <Trash2 size={12} />
-        Delete
+      <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left text-error" onClick={onDelete}>
+        <Trash2 size={12} /> Delete
       </button>
     </div>
   );

@@ -62,22 +62,40 @@ export class SFTPManager {
     });
   }
 
-  async download(sessionId: string, remotePath: string, localPath: string): Promise<void> {
+  async download(
+    sessionId: string,
+    remotePath: string,
+    localPath: string,
+    onProgress?: (transferred: number, total: number) => void,
+  ): Promise<void> {
     const sftp = this.getSftp(sessionId);
 
     return new Promise((resolve, reject) => {
-      sftp.fastGet(remotePath, localPath, (err) => {
+      sftp.fastGet(remotePath, localPath, {
+        step: (transferred: number, _chunk: number, total: number) => {
+          onProgress?.(transferred, total);
+        },
+      }, (err) => {
         if (err) reject(err);
         else resolve();
       });
     });
   }
 
-  async upload(sessionId: string, localPath: string, remotePath: string): Promise<void> {
+  async upload(
+    sessionId: string,
+    localPath: string,
+    remotePath: string,
+    onProgress?: (transferred: number, total: number) => void,
+  ): Promise<void> {
     const sftp = this.getSftp(sessionId);
 
     return new Promise((resolve, reject) => {
-      sftp.fastPut(localPath, remotePath, (err) => {
+      sftp.fastPut(localPath, remotePath, {
+        step: (transferred: number, _chunk: number, total: number) => {
+          onProgress?.(transferred, total);
+        },
+      }, (err) => {
         if (err) reject(err);
         else resolve();
       });

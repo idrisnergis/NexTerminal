@@ -286,31 +286,68 @@ ipcMain.handle('sftp:list', async (_event, sessionId: string, remotePath: string
 
 ipcMain.handle('sftp:download', async (_event, sessionId: string, remotePath: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
+    title: 'Download File',
     defaultPath: path.basename(remotePath),
+    buttonLabel: 'Download',
   });
-  if (result.canceled || !result.filePath) return { success: false };
-  
+  if (result.canceled || !result.filePath) return { success: false, canceled: true };
+
   try {
-    await sftpManager.download(sessionId, remotePath, result.filePath);
+    if (!sftpManager.has(sessionId)) {
+      await sftpManager.connect(sshManager.getClient(sessionId), sessionId);
+    }
+    const fileName = path.basename(remotePath);
+    await sftpManager.download(sessionId, remotePath, result.filePath, (transferred, total) => {
+      mainWindow?.webContents.send(`sftp:progress:${sessionId}`, {
+        direction: 'download',
+        fileName,
+        transferred,
+        total,
+        currentFile: 1,
+        fileCount: 1,
+        percent: total > 0 ? Math.min(100, Math.round((transferred / total) * 100)) : 0,
+      });
+    });
     return { success: true };
   } catch (error: any) {
+    log('ERROR', `SFTP download failed (${remotePath}): ${error.message}`);
     return { success: false, error: error.message };
   }
 });
 
 ipcMain.handle('sftp:upload', async (_event, sessionId: string, remotePath: string) => {
   const result = await dialog.showOpenDialog(mainWindow!, {
+    title: `Upload to ${remotePath}`,
+    buttonLabel: 'Upload',
     properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'All Files', extensions: ['*'] }],
   });
-  if (result.canceled || result.filePaths.length === 0) return { success: false };
-  
+  if (result.canceled || result.filePaths.length === 0) return { success: false, canceled: true };
+
   try {
-    for (const localPath of result.filePaths) {
-      const remoteFilePath = `${remotePath}/${path.basename(localPath)}`;
-      await sftpManager.upload(sessionId, localPath, remoteFilePath);
+    if (!sftpManager.has(sessionId)) {
+      await sftpManager.connect(sshManager.getClient(sessionId), sessionId);
+    }
+    const normalizedRemotePath = remotePath === '/' ? '' : remotePath.replace(/\/$/, '');
+    for (let index = 0; index < result.filePaths.length; index++) {
+      const localPath = result.filePaths[index];
+      const fileName = path.basename(localPath);
+      const remoteFilePath = `${normalizedRemotePath}/${fileName}`;
+      await sftpManager.upload(sessionId, localPath, remoteFilePath, (transferred, total) => {
+        mainWindow?.webContents.send(`sftp:progress:${sessionId}`, {
+          direction: 'upload',
+          fileName,
+          transferred,
+          total,
+          currentFile: index + 1,
+          fileCount: result.filePaths.length,
+          percent: total > 0 ? Math.min(100, Math.round((transferred / total) * 100)) : 0,
+        });
+      });
     }
     return { success: true };
   } catch (error: any) {
+    log('ERROR', `SFTP upload failed (${remotePath}): ${error.message}`);
     return { success: false, error: error.message };
   }
 });
