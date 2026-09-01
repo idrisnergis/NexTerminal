@@ -16,6 +16,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { RemoteFile, SFTPTransferProgress } from '../types/electron';
+import FileEditor from './FileEditor';
 
 interface FileBrowserProps {
   sessionId: string;
@@ -37,7 +38,14 @@ function FileBrowser({ sessionId, isVisible, onToggle, fontSize }: FileBrowserPr
   const [newFolderName, setNewFolderName] = useState('');
   const [transfer, setTransfer] = useState<SFTPTransferProgress | null>(null);
   const [transferDone, setTransferDone] = useState<string | null>(null);
+  const [editingFile, setEditingFile] = useState<{ path: string; name: string } | null>(null);
   const hasLoadedRef = useRef(false);
+
+  const openEditor = (file: RemoteFile) => {
+    const remotePath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
+    setEditingFile({ path: remotePath, name: file.name });
+    setContextMenu(null);
+  };
 
   // Listen for progress events
   useEffect(() => {
@@ -89,6 +97,9 @@ function FileBrowser({ sessionId, isVisible, onToggle, fontSize }: FileBrowserPr
   const handleDoubleClick = (file: RemoteFile) => {
     if (file.type === 'directory') {
       navigateTo(file.name);
+    } else {
+      // Open text-editable files in the built-in editor
+      openEditor(file);
     }
   };
 
@@ -373,7 +384,17 @@ function FileBrowser({ sessionId, isVisible, onToggle, fontSize }: FileBrowserPr
 
       {/* Context Menu */}
       {contextMenu && (
-        <ContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onDownload={() => handleDownload(contextMenu.file)} onRename={() => handleRename(contextMenu.file)} onDelete={() => handleDelete(contextMenu.file)} onClose={() => setContextMenu(null)} />
+        <ContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onEdit={() => openEditor(contextMenu.file)} onDownload={() => handleDownload(contextMenu.file)} onRename={() => handleRename(contextMenu.file)} onDelete={() => handleDelete(contextMenu.file)} onClose={() => setContextMenu(null)} />
+      )}
+
+      {/* File Editor */}
+      {editingFile && (
+        <FileEditor
+          sessionId={sessionId}
+          filePath={editingFile.path}
+          fileName={editingFile.name}
+          onClose={() => setEditingFile(null)}
+        />
       )}
     </div>
   );
@@ -386,11 +407,16 @@ function FileIcon({ name }: { name: string }) {
   return <File size={14} className="text-terminal-fg/40" />;
 }
 
-interface ContextMenuProps { x: number; y: number; file: RemoteFile; onDownload: () => void; onRename: () => void; onDelete: () => void; onClose: () => void; }
+interface ContextMenuProps { x: number; y: number; file: RemoteFile; onEdit: () => void; onDownload: () => void; onRename: () => void; onDelete: () => void; onClose: () => void; }
 
-function ContextMenu({ x, y, file, onDownload, onRename, onDelete }: ContextMenuProps) {
+function ContextMenu({ x, y, file, onEdit, onDownload, onRename, onDelete }: ContextMenuProps) {
   return (
     <div className="fixed z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]" style={{ left: Math.min(x, window.innerWidth - 180), top: Math.min(y, window.innerHeight - 150) }} onClick={(e) => e.stopPropagation()}>
+      {file.type === 'file' && (
+        <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left" onClick={onEdit}>
+          <FileText size={12} /> Edit
+        </button>
+      )}
       {file.type === 'file' && (
         <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-sidebar-hover transition-colors text-left" onClick={onDownload}>
           <Download size={12} /> Download

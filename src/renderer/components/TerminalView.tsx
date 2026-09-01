@@ -82,6 +82,70 @@ function TerminalView({ sessionId, isActive, fontSize, onReconnect, onCloseTab }
     xtermRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    // Copy/paste support
+    const pasteFromClipboard = async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && !isSessionStoppedRef.current) {
+          window.electronAPI.sshWrite(sessionId, text);
+        }
+      } catch {
+        // Clipboard read may be blocked
+      }
+    };
+
+    const copySelection = async () => {
+      const selection = terminal.getSelection();
+      if (selection) {
+        try {
+          await navigator.clipboard.writeText(selection);
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    // Ctrl+C copies when there is a selection, otherwise sends SIGINT.
+    // Ctrl+V (and Ctrl+Shift+V) pastes.
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true;
+      const ctrlOrMeta = event.ctrlKey || event.metaKey;
+
+      if (ctrlOrMeta && event.key.toLowerCase() === 'c' && terminal.hasSelection()) {
+        copySelection();
+        terminal.clearSelection();
+        return false;
+      }
+      if (ctrlOrMeta && event.key.toLowerCase() === 'v') {
+        pasteFromClipboard();
+        return false;
+      }
+      if (ctrlOrMeta && event.shiftKey && event.key.toLowerCase() === 'c') {
+        copySelection();
+        return false;
+      }
+      return true;
+    });
+
+    // Right-click: copy selection if any, otherwise paste (MobaXterm-style)
+    terminalRef.current.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (terminal.hasSelection()) {
+        copySelection();
+        terminal.clearSelection();
+      } else {
+        pasteFromClipboard();
+      }
+    });
+
+    // Middle-click paste (Linux-style)
+    terminalRef.current.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        pasteFromClipboard();
+      }
+    });
+
     // Send input to SSH
     terminal.onData((data) => {
       // If session is stopped, handle special keys
