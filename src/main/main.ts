@@ -27,6 +27,56 @@ const MAX_OLD_LOGS = 2; // Keep 2 rotated files
 const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'nexterm.log');
 
+// Persisted window bounds so the app reopens at its last size/position.
+interface WindowState {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  isMaximized?: boolean;
+}
+const windowStateFile = path.join(app.getPath('userData'), 'window-state.json');
+
+function loadWindowState(): WindowState {
+  const defaults: WindowState = { width: 1400, height: 900, isMaximized: false };
+  try {
+    if (fs.existsSync(windowStateFile)) {
+      const saved = JSON.parse(fs.readFileSync(windowStateFile, 'utf-8'));
+      return { ...defaults, ...saved };
+    }
+  } catch {
+    // Ignore corrupt state
+  }
+  return defaults;
+}
+
+let windowStateSaveTimer: NodeJS.Timeout | null = null;
+
+function writeWindowState() {
+  if (!mainWindow) return;
+  try {
+    const isMaximized = mainWindow.isMaximized();
+    // getNormalBounds returns the un-maximized bounds even while maximized
+    const bounds = mainWindow.getNormalBounds();
+    const state: WindowState = {
+      width: bounds.width,
+      height: bounds.height,
+      x: bounds.x,
+      y: bounds.y,
+      isMaximized,
+    };
+    fs.writeFileSync(windowStateFile, JSON.stringify(state, null, 2));
+  } catch {
+    // Ignore write errors
+  }
+}
+
+function saveWindowState() {
+  // Debounce frequent resize/move events
+  if (windowStateSaveTimer) clearTimeout(windowStateSaveTimer);
+  windowStateSaveTimer = setTimeout(writeWindowState, 400);
+}
+
 function rotateLogIfNeeded() {
   try {
     if (!fs.existsSync(logFile)) return;
@@ -77,9 +127,12 @@ const localTerminals: Map<string, ChildProcess> = new Map();
 
 function createWindow() {
   const isWindows = process.platform === 'win32';
+  const state = loadWindowState();
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: state.width,
+    height: state.height,
+    x: state.x,
+    y: state.y,
     minWidth: 800,
     minHeight: 500,
     title: 'NexTerm',
@@ -87,6 +140,7 @@ function createWindow() {
     resizable: true,
     ...(isWindows ? { thickFrame: true } : {}),
     autoHideMenuBar: process.platform !== 'darwin',
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -95,9 +149,23 @@ function createWindow() {
     },
   });
 
+  // Restore maximized state, then reveal the window to avoid a visual jump
+  if (state.isMaximized) {
+    mainWindow.maximize();
+  }
+  mainWindow.show();
+
   // Ensure zoom stays at 1.0 (prevents accidental Ctrl+scroll zoom)
   mainWindow.webContents.setZoomFactor(1.0);
   mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+
+  // Persist size/position on change and before close
+  mainWindow.on('resize', saveWindowState);
+  mainWindow.on('move', saveWindowState);
+  mainWindow.on('close', () => {
+    if (windowStateSaveTimer) clearTimeout(windowStateSaveTimer);
+    writeWindowState();
+  });
 
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
