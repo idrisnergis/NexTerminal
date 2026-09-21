@@ -26,6 +26,13 @@
     -webkit-app-region: no-drag;
   }
 
+  /* While the file editor modal is open, freeze background interactions
+     (terminal xterm surface, resize handles, sidebar) so clicks/keys only
+     reach the editor. The modal itself is portaled directly to <body>. */
+  body.editor-open #root {
+    pointer-events: none;
+  }
+
   /* Let the saved sidebar font setting override Tailwind's fixed small sizes. */
   .sidebar-font-sized .text-xs,
   .sidebar-font-sized .text-sm,

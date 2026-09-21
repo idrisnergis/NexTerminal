@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, RefreshCw, FileText, Check, AlertCircle } from 'lucide-react';
 
 interface FileEditorProps {
@@ -39,6 +40,12 @@ function FileEditor({ sessionId, filePath, fileName, onClose }: FileEditorProps)
     loadFile();
   }, [loadFile]);
 
+  // Block background interaction (terminal xterm, resize handles) while the editor is open
+  useEffect(() => {
+    document.body.classList.add('editor-open');
+    return () => document.body.classList.remove('editor-open');
+  }, []);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
@@ -77,8 +84,8 @@ function FileEditor({ sessionId, filePath, fileName, onClose }: FileEditorProps)
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8" onClick={handleClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-8" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} onClick={handleClose}>
       <div
         className="bg-terminal-bg w-full max-w-4xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -152,7 +159,8 @@ function FileEditor({ sessionId, filePath, fileName, onClose }: FileEditorProps)
           <span>{isDirty ? 'Modified' : 'Saved'} · Ctrl+S to save · Esc to close</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
