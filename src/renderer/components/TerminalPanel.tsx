@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { X, FolderOpen, Home } from 'lucide-react';
-import { TerminalTab } from '../types/electron';
+import { TerminalTab, SavedConnection } from '../types/electron';
 import TerminalView from './TerminalView';
 import FileBrowser from './FileBrowser';
 import ResizeHandle from './ResizeHandle';
@@ -13,13 +13,12 @@ interface TerminalPanelProps {
   onTabSelect: (id: string) => void;
   onTabClose: (id: string) => void;
   onReconnect?: (tab: TerminalTab) => void;
-  onQuickConnect?: (searchTerm: string) => void;
-  onStartLocalTerminal?: () => void;
+  onQuickConnect?: (searchOrConnection: string | SavedConnection) => void;
   terminalFontSize: number;
   sidebarFontSize: number;
 }
 
-function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect, onQuickConnect, onStartLocalTerminal, terminalFontSize, sidebarFontSize }: TerminalPanelProps) {
+function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect, onQuickConnect, terminalFontSize, sidebarFontSize }: TerminalPanelProps) {
   const [fileBrowserVisible, setFileBrowserVisible] = useState<Record<string, boolean>>({});
   const [fileBrowserWidth, setFileBrowserWidth] = useState(280);
   const [showHome, setShowHome] = useState(true);
@@ -31,7 +30,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
       setShowHome(false);
 
       const tab = tabs.find(t => t.id === activeTabId);
-      if (tab && tab.isConnected && tab.connectionName !== 'Local Terminal') {
+      if (tab && tab.isConnected) {
         setFileBrowserVisible((prev) => {
           if (prev[activeTabId] === undefined) {
             return { ...prev, [activeTabId]: true };
@@ -61,7 +60,6 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
     activeTabId &&
     !isHomeActive &&
     activeTab &&
-    activeTab.connectionName !== 'Local Terminal' &&
     (fileBrowserVisible[activeTabId] ?? false)
   );
 
@@ -109,7 +107,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
 
         {/* File Browser Toggle */}
         <div className="ml-auto flex items-center pr-2">
-          {activeTabId && !isHomeActive && activeTab && activeTab.connectionName !== 'Local Terminal' && (
+          {activeTabId && !isHomeActive && activeTab && (
             <button
               onClick={() => toggleFileBrowser(activeTabId)}
               className={`p-1.5 rounded transition-colors ${
@@ -127,10 +125,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
       <div className="flex-1 relative overflow-hidden">
         {/* Home Screen */}
         <div className={`absolute inset-0 z-20 ${isHomeActive || tabs.length === 0 ? '' : 'pointer-events-none hidden'}`}>
-          <HomeScreen
-            onStartLocalTerminal={onStartLocalTerminal}
-            onConnect={onQuickConnect}
-          />
+          <HomeScreen onConnect={onQuickConnect} />
         </div>
 
         {/* Terminal + File Browser area — always rendered once tabs exist */}
@@ -160,7 +155,7 @@ function TerminalPanel({ tabs, activeTabId, onTabSelect, onTabClose, onReconnect
                 <ResizeHandle direction="horizontal" onResize={handleFileBrowserResize} />
               )}
               {tabs
-                .filter(t => t.connectionName !== 'Local Terminal' && fileBrowserVisible[t.id])
+                .filter(t => fileBrowserVisible[t.id])
                 .map((tab) => (
                   <div
                     key={`fb-${tab.id}`}

@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Terminal, Search, MonitorDot, Wifi } from 'lucide-react';
+import { Terminal, Search, Wifi } from 'lucide-react';
 import { SavedConnection } from '../types/electron';
 
 interface HomeScreenProps {
-  onStartLocalTerminal?: () => void;
-  onConnect?: (searchOrHost: string) => void;
+  onConnect?: (searchOrConnection: string | SavedConnection) => void;
 }
 
-function HomeScreen({ onStartLocalTerminal, onConnect }: HomeScreenProps) {
+function HomeScreen({ onConnect }: HomeScreenProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [filteredResults, setFilteredResults] = useState<SavedConnection[]>([]);
@@ -44,7 +43,7 @@ function HomeScreen({ onStartLocalTerminal, onConnect }: HomeScreenProps) {
   }, [searchTerm, connections]);
 
   const handleSelect = (conn: SavedConnection) => {
-    onConnect?.(conn.host);
+    onConnect?.(conn);
     setSearchTerm('');
     setShowDropdown(false);
   };
@@ -84,25 +83,14 @@ function HomeScreen({ onStartLocalTerminal, onConnect }: HomeScreenProps) {
       <h2 className="text-lg font-semibold mb-1 text-terminal-fg/60">NexTerm</h2>
       <p className="text-xs mb-6 text-terminal-fg/30">SSH Connection Manager</p>
 
-      {/* Action buttons */}
-      <div className="flex gap-3 mb-6">
-        <button
-          onClick={onStartLocalTerminal}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
-        >
-          <MonitorDot size={14} className="text-success" />
-          <span className="text-xs text-terminal-fg/70">Start local terminal</span>
-        </button>
-      </div>
-
-      {/* Search with autocomplete */}
-      <div className="w-80 relative">
+      {/* SSH-only quick connection */}
+      <div className="w-80 relative mb-6">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-terminal-fg/30 z-10" />
         <input
           ref={inputRef}
           type="text"
           className="input-field pl-9 text-sm"
-          placeholder="Find session or server name..."
+          placeholder="ssh user@host or saved server name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -142,7 +130,7 @@ function HomeScreen({ onStartLocalTerminal, onConnect }: HomeScreenProps) {
 
       {/* Hint */}
       <p className="text-[10px] text-terminal-fg/20 mt-3">
-        Type to search sessions • Enter to connect • Type IP for quick connect
+        Enter a saved server name, IP, or ssh user@host • Enter to connect
       </p>
     </div>
   );

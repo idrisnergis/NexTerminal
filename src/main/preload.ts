@@ -73,8 +73,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportConnections: () => ipcRenderer.invoke('export:connections'),
   importConnectionsJson: () => ipcRenderer.invoke('import:connectionsJson'),
 
-  // Local terminal
-  localStart: () => ipcRenderer.invoke('local:start'),
-  localWrite: (sessionId: string, data: string) => ipcRenderer.invoke('local:write', sessionId, data),
-  localKill: (sessionId: string) => ipcRenderer.invoke('local:kill', sessionId),
 });

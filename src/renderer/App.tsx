@@ -157,43 +157,57 @@ function App() {
     refreshSidebar();
   }, [refreshSidebar]);
 
-  const handleStartLocalTerminal = useCallback(async () => {
-    const result = await window.electronAPI.localStart();
-    if (result.success && result.sessionId) {
-      const newTab: TerminalTab = {
-        id: result.sessionId,
-        sessionId: result.sessionId,
-        connectionName: 'Local Terminal',
-        host: 'localhost',
-        isConnected: true,
-      };
-      setTabs((prev) => [...prev, newTab]);
-      setActiveTabId(result.sessionId);
+  const handleQuickConnect = useCallback(async (input: string | SavedConnection) => {
+    if (typeof input !== 'string') {
+      handleConnect(input);
+      return;
     }
-  }, []);
 
-  const handleQuickSearch = useCallback(async (searchTerm: string) => {
-    // Search through saved connections and connect to first match
+    const value = input.trim();
+    const sshMatch = /^ssh\s+(?:-p\s+(\d{1,5})\s+)?([^\s@]+)@([a-zA-Z0-9._:-]+)$/i.exec(value);
+    const directTarget = sshMatch ? sshMatch[3] : value;
     const connections = await window.electronAPI.getConnections();
-    const match = connections.find(
-      (c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.host.toLowerCase().includes(searchTerm.toLowerCase())
+
+    if (sshMatch) {
+      const port = Number(sshMatch[1] ?? 22);
+      const username = sshMatch[2];
+      if (!Number.isInteger(port) || port < 1 || port > 65535) return;
+
+      // Reuse the exact saved profile first, including its SSH key and passphrase.
+      const saved = connections.find((connection) =>
+        connection.host.toLowerCase() === directTarget.toLowerCase()
+        && connection.username === username
+        && connection.port === port,
+      );
+      handleConnect(saved ?? {
+        id: `quick-${Date.now().toString(36)}`,
+        name: `${username}@${directTarget}`,
+        host: directTarget,
+        port,
+        username,
+        authType: 'key',
+      });
+      return;
+    }
+
+    const saved = connections.find((connection) =>
+      connection.name.toLowerCase() === value.toLowerCase()
+      || connection.host.toLowerCase() === value.toLowerCase(),
     );
-    if (match) {
-      handleConnect(match);
-    } else {
-      // If looks like IP/hostname, create a quick connection
-      if (searchTerm.match(/^[\d.]+$/) || searchTerm.includes('.')) {
-        handleConnect({
-          id: Date.now().toString(36),
-          name: searchTerm,
-          host: searchTerm,
-          port: 22,
-          username: '',
-          authType: 'password',
-        });
-      }
+    if (saved) {
+      handleConnect(saved);
+      return;
+    }
+
+    if (/^[a-zA-Z0-9._:-]+$/.test(directTarget)) {
+      handleConnect({
+        id: `quick-${Date.now().toString(36)}`,
+        name: directTarget,
+        host: directTarget,
+        port: 22,
+        username: '',
+        authType: 'password',
+      });
     }
   }, [handleConnect]);
 
@@ -241,8 +255,7 @@ function App() {
             onReconnect={(tab) => {
               handleCloseTab(tab.id);
             }}
-            onStartLocalTerminal={handleStartLocalTerminal}
-            onQuickConnect={handleQuickSearch}
+            onQuickConnect={handleQuickConnect}
             terminalFontSize={settings.terminalFontSize}
             sidebarFontSize={settings.sidebarFontSize}
           />

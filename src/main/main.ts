@@ -1,8 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
-import { spawn, ChildProcess } from 'child_process';
 import { SSHManager } from './ssh-manager';
 import { ConnectionStore } from './connection-store';
 import { SFTPManager } from './sftp-manager';
@@ -123,7 +121,6 @@ const sshManager = new SSHManager();
 const connectionStore = new ConnectionStore();
 const sftpManager = new SFTPManager();
 const settingsStore = new SettingsStore();
-const localTerminals: Map<string, ChildProcess> = new Map();
 
 function createWindow() {
   const isWindows = process.platform === 'win32';
@@ -253,23 +250,11 @@ ipcMain.handle('ssh:connect', async (_event, connection) => {
 });
 
 ipcMain.handle('ssh:disconnect', async (_event, sessionId: string) => {
-  if (localTerminals.has(sessionId)) {
-    const proc = localTerminals.get(sessionId);
-    proc?.kill();
-    localTerminals.delete(sessionId);
-    return { success: true };
-  }
   sshManager.disconnect(sessionId);
   return { success: true };
 });
 
 ipcMain.handle('ssh:write', async (_event, sessionId: string, data: string) => {
-  // Check if it's a local terminal
-  if (localTerminals.has(sessionId)) {
-    const proc = localTerminals.get(sessionId);
-    proc?.stdin?.write(data);
-    return { success: true };
-  }
   sshManager.write(sessionId, data);
   return { success: true };
 });
@@ -609,70 +594,4 @@ ipcMain.handle('import:connectionsJson', async () => {
     log('ERROR', `Import JSON failed: ${error.message}`);
     return { success: false, error: error.message };
   }
-});
-
-// Local terminal handlers
-ipcMain.handle('local:start', async () => {
-  try {
-    const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-    const platform = process.platform;
-    const shell = platform === 'win32'
-      ? (process.env.COMSPEC || 'powershell.exe')
-      : (process.env.SHELL || (platform === 'darwin' ? '/bin/zsh' : '/bin/bash'));
-    const shellArgs = platform === 'win32'
-      ? (shell.toLowerCase().includes('powershell') ? ['-NoLogo'] : [])
-      : ['-i'];
-    const shellEnv = {
-      ...process.env,
-      ...(platform === 'win32' ? {} : { TERM: process.env.TERM || 'xterm-256color' }),
-    };
-
-    const proc = spawn(shell, shellArgs, {
-      env: shellEnv,
-      cwd: os.homedir(),
-      shell: false,
-      windowsHide: true,
-    });
-
-    localTerminals.set(sessionId, proc);
-
-    proc.stdout?.on('data', (data: Buffer) => {
-      mainWindow?.webContents.send('ssh:data', sessionId, data.toString('utf-8'));
-    });
-
-    proc.stderr?.on('data', (data: Buffer) => {
-      mainWindow?.webContents.send('ssh:data', sessionId, data.toString('utf-8'));
-    });
-
-    proc.on('close', () => {
-      mainWindow?.webContents.send('ssh:closed', sessionId);
-      localTerminals.delete(sessionId);
-    });
-
-    proc.on('error', (err) => {
-      mainWindow?.webContents.send('ssh:error', sessionId, err.message);
-      localTerminals.delete(sessionId);
-    });
-
-    return { success: true, sessionId };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('local:write', async (_event, sessionId: string, data: string) => {
-  const proc = localTerminals.get(sessionId);
-  if (proc?.stdin) {
-    proc.stdin.write(data);
-  }
-  return { success: true };
-});
-
-ipcMain.handle('local:kill', async (_event, sessionId: string) => {
-  const proc = localTerminals.get(sessionId);
-  if (proc) {
-    proc.kill();
-    localTerminals.delete(sessionId);
-  }
-  return { success: true };
 });

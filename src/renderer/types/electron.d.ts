@@ -49,11 +49,6 @@ export interface ElectronAPI {
   importSessions: () => Promise<{ success: boolean; count?: number; error?: string }>;
   exportConnections: () => Promise<{ success: boolean; error?: string }>;
   importConnectionsJson: () => Promise<{ success: boolean; count?: number; error?: string }>;
-
-  // Local terminal
-  localStart: () => Promise<{ success: boolean; sessionId?: string; error?: string }>;
-  localWrite: (sessionId: string, data: string) => Promise<{ success: boolean }>;
-  localKill: (sessionId: string) => Promise<{ success: boolean }>;
 }
 
 export interface SavedConnection {
